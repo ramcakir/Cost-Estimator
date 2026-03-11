@@ -3,8 +3,8 @@ const ASSETS_TO_CACHE = [
   './',
   './index.html', // Matches your filename
   './manifest.json',
-  './icon-192.png',
-  './icon-512.png',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
   // External assets for offline use
   'https://cdn.tailwindcss.com',
   'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap'
@@ -49,4 +49,5 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
 
