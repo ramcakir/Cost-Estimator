@@ -1,7 +1,7 @@
 const CACHE_NAME = 'cost-estimator-v1';
 const ASSETS_TO_CACHE = [
   './',
-  './Index.html', // Matches your filename
+  './index.html', // Matches your filename
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
@@ -49,3 +49,4 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
