@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0f1419">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Cost Estimator">
+  <meta name="description" content="Facility cost estimation tool for 50-500M EUR industrial projects">
+  <title>Facility Cost Estimator</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Space Grotesk', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --bg-elevated: #161d26;
+      --bg-card: #1c2731;
+      --border: #2f3e4d;
+      --border-focus: #00d4aa;
+      --text: #e7edf4;
+      --text-muted: #8899a8;
+      --accent: #00d4aa;
+      --accent-dim: rgba(0, 212, 170, 0.15);
+      --warning: #ffb347;
+      --danger: #ff6b6b;
+      --civil: #4ecdc4;
+      --mechanical: #ff6b6b;
+      --electrical: #ffd93d;
+      --piping: #6bcb77;
+      --structural: #9b59b6;
+      --instrumentation: #3498db;
+      --hvac: #e67e22;
+      --fire: #e74c3c;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    
+    html, body {
+      overscroll-behavior: none;
+    }
+
+    body {
+      font-family: 'Space Grotesk', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    .editable-input {
+      background: transparent;
+      border: 1px solid transparent;
+      padding: 6px 8px;
+      border-radius: 4px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      transition: all 0.2s ease;
+      width: 100%;
+    }
+    .editable-input:hover { background: var(--accent-dim); border-color: var(--border); }
+    .editable-input:focus {
+      outline: none;
+      background: var(--bg);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-dim);
+    }
+    .editable-input.number { text-align: right; }
+
+    .discipline-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .discipline-section {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    .discipline-section.visible {
+      animation: fadeInUp 0.5s ease-out forwards;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg);
+      font-weight: 600;
+      padding: 12px 20px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0, 212, 170, 0.3); }
+    .btn-primary:active { transform: scale(0.98); }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 12px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 500;
+      font-size: 14px;
+    }
+    .btn-secondary:hover { border-color: var(--accent); background: var(--accent-dim); }
+    .btn-secondary:active { transform: scale(0.98); }
+
+    .btn-icon {
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      border-radius: 8px;
+    }
+
+    .cost-table { width: 100%; border-collapse: collapse; }
+    .cost-table th {
+      text-align: left;
+      padding: 10px 12px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: var(--bg-card);
+      z-index: 10;
+    }
+    .cost-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .cost-table tr:hover td { background: var(--accent-dim); }
+    .cost-table th:last-child, .cost-table td:last-child { text-align: right; }
+
+    .summary-bar {
+      background: linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg-card) 100%);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+    
+    @media (min-width: 640px) {
+      .summary-bar {
+        grid-template-columns: repeat(4, 1fr);
+        padding: 20px 24px;
+      }
+    }
+
+    .summary-item { text-align: center; }
+    .summary-item .label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .summary-item .value {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    
+    @media (min-width: 640px) {
+      .summary-item .value { font-size: 22px; }
+    }
+
+    .discipline-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      background: var(--bg-elevated);
+      border-radius: 8px 8px 0 0;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .discipline-header:hover { background: var(--bg-card); }
+    .discipline-header .left { display: flex; align-items: center; gap: 10px; }
+    .discipline-header .discipline-title { font-weight: 600; font-size: 14px; }
+    .discipline-header .discipline-subtotal {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .discipline-content {
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 0.4s ease;
+    }
+    .discipline-content.open { max-height: 2000px; }
+
+    .collapse-arrow { transition: transform 0.3s ease; }
+    .collapse-arrow.open { transform: rotate(180deg); }
+
+    .progress-bar {
+      height: 5px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.5s ease;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+      padding: 20px;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal-content {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 400px;
+      width: 100%;
+      transform: scale(0.9);
+      transition: transform 0.3s ease;
+    }
+    .modal-overlay.active .modal-content { transform: scale(1); }
+
+    .file-input-wrapper {
+      position: relative;
+      overflow: hidden;
+      display: inline-block;
+    }
+    .file-input-wrapper input[type=file] {
+      position: absolute;
+      left: 0;
+      top: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .fab {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      box-shadow: 0 4px 20px rgba(0, 212, 170, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 100;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      z-index: 1001;
+      opacity: 0;
+      transition: all 0.3s ease;
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    @media print {
+      body { background: white; color: black; }
+      .no-print { display: none !important; }
+      .discipline-content { max-height: none !important; }
+      .cost-table th { background: #f0f0f0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    .safe-area-bottom {
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="border-b border-[var(--border)] bg-[var(--bg-elevated)] sticky top-0 z-50 no-print flex-shrink-0">
+      <div class="px-4 py-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-lg font-bold">Cost Estimator</h1>
+            <p class="text-xs text-[var(--text-muted)]">50-500M EUR Projects</p>
+          </div>
+          <button class="btn-secondary btn-icon" onclick="showMenu()" aria-label="Menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="1"></circle>
+              <circle cx="12" cy="5" r="1"></circle>
+              <circle cx="12" cy="19" r="1"></circle>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto px-4 py-4">
+      <!-- Summary Bar -->
+      <section class="mb-4">
+        <div class="summary-bar">
+          <div class="summary-item">
+            <div class="label">Total</div>
+            <div class="value mono" id="totalEstimate">0 EUR</div>
+          </div>
+          <div class="summary-item">
+            <div class="label">Contingency</div>
+            <div class="value mono" id="contingency" style="color: var(--warning);">0</div>
+          </div>
+          <div class="summary-item">
+            <div class="label">Grand Total</div>
+            <div class="value mono" id="grandTotal" style="color: var(--text); font-size: 16px;">0</div>
+          </div>
+          <div class="summary-item">
+            <div class="label">Status</div>
+            <div class="value mono" id="targetRange" style="font-size: 12px;">-</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Progress by Discipline -->
+      <section class="mb-4 no-print">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" id="progressBars"></div>
+      </section>
+
+      <!-- Disciplines -->
+      <section id="disciplinesContainer" class="pb-20 safe-area-bottom"></section>
+    </main>
+
+    <!-- FAB -->
+    <button class="fab no-print" onclick="exportReport()" aria-label="Export Report">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+      </svg>
+    </button>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <!-- Menu Modal -->
+  <div class="modal-overlay" id="menuModal">
+    <div class="modal-content">
+      <h2 class="text-lg font-bold mb-4">Menu</h2>
+      <div class="space-y-3">
+        <div class="file-input-wrapper w-full">
+          <button class="btn-secondary w-full justify-start">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            Load Data
+          </button>
+          <input type="file" id="fileInput" accept=".json">
+        </div>
+        <button class="btn-secondary w-full justify-start" onclick="saveData()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/>
+            <polyline points="7 3 7 8 15 8"/>
+          </svg>
+          Save Data
+        </button>
+        <button class="btn-secondary w-full justify-start" onclick="exportReport()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+          Export Report
+        </button>
+        <button class="btn-secondary w-full justify-start" onclick="resetData()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="1 4 1 10 7 10"/>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+          </svg>
+          Reset to Default
+        </button>
+        <hr class="border-[var(--border)]">
+        <button class="btn-secondary w-full justify-center" onclick="hideMenu()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =====================
+    // DATA INITIALIZATION
+    // =====================
+    const defaultData = {
+      projectInfo: {
+        name: "Industrial Facility Expansion",
+        location: "Rotterdam, Netherlands",
+        date: new Date().toISOString().split('T')[0]
+      },
+      disciplines: [
+        {
+          id: "civil",
+          name: "Civil Works",
+          color: "#4ecdc4",
+          items: [
+            { id: 1, description: "Site preparation & earthworks", unit: "m²", quantity: 125000, unitPrice: 35 },
+            { id: 2, description: "Excavation & backfill", unit: "m³", quantity: 85000, unitPrice: 28 },
+            { id: 3, description: "Mass concrete foundations", unit: "m³", quantity: 12000, unitPrice: 380 },
+            { id: 4, description: "Reinforced concrete structures", unit: "m³", quantity: 8500, unitPrice: 520 },
+            { id: 5, description: "Piling works", unit: "m", quantity: 15000, unitPrice: 185 },
+            { id: 6, description: "Roads & paving", unit: "m²", quantity: 45000, unitPrice: 95 },
+            { id: 7, description: "Underground drainage", unit: "m", quantity: 8500, unitPrice: 145 },
+            { id: 8, description: "Retaining walls", unit: "m²", quantity: 3200, unitPrice: 280 },
+            { id: 9, description: "Site fencing & security", unit: "m", quantity: 2400, unitPrice: 125 }
+          ]
+        },
+        {
+          id: "mechanical",
+          name: "Mechanical Equipment",
+          color: "#ff6b6b",
+          items: [
+            { id: 1, description: "Process vessels (various)", unit: "t", quantity: 450, unitPrice: 8500 },
+            { id: 2, description: "Storage tanks (atmospheric)", unit: "m³", quantity: 25000, unitPrice: 450 },
+            { id: 3, description: "Pressure vessels", unit: "t", quantity: 180, unitPrice: 12500 },
+            { id: 4, description: "Pumps (centrifugal)", unit: "ea", quantity: 85, unitPrice: 45000 },
+            { id: 5, description: "Pumps (positive displacement)", unit: "ea", quantity: 24, unitPrice: 78000 },
+            { id: 6, description: "Compressors (reciprocating)", unit: "ea", quantity: 8, unitPrice: 1250000 },
+            { id: 7, description: "Heat exchangers (shell & tube)", unit: "ea", quantity: 42, unitPrice: 185000 },
+            { id: 8, description: "Cooling towers", unit: "ea", quantity: 4, unitPrice: 850000 },
+            { id: 9, description: "Boilers (package)", unit: "ea", quantity: 3, unitPrice: 2200000 },
+            { id: 10, description: "Cranes & hoists", unit: "ea", quantity: 12, unitPrice: 350000 }
+          ]
+        },
+        {
+          id: "electrical",
+          name: "Electrical Systems",
+          color: "#ffd93d",
+          items: [
+            { id: 1, description: "HV switchgear (11kV)", unit: "panel", quantity: 8, unitPrice: 285000 },
+            { id: 2, description: "MV switchgear (3.3kV)", unit: "panel", quantity: 15, unitPrice: 145000 },
+            { id: 3, description: "LV switchgear", unit: "panel", quantity: 35, unitPrice: 65000 },
+            { id: 4, description: "Transformers (power)", unit: "MVA", quantity: 45, unitPrice: 85000 },
+            { id: 5, description: "Motor control centers", unit: "section", quantity: 28, unitPrice: 125000 },
+            { id: 6, description: "Power cabling (HV)", unit: "m", quantity: 35000, unitPrice: 185 },
+            { id: 7, description: "Power cabling (LV)", unit: "m", quantity: 125000, unitPrice: 45 },
+            { id: 8, description: "Control cabling", unit: "m", quantity: 180000, unitPrice: 28 },
+            { id: 9, description: "Cable trays & ladders", unit: "m", quantity: 8500, unitPrice: 85 },
+            { id: 10, description: "Lighting systems", unit: "point", quantity: 2500, unitPrice: 450 },
+            { id: 11, description: "Emergency power (UPS)", unit: "kVA", quantity: 2000, unitPrice: 650 },
+            { id: 12, description: "Generators (standby)", unit: "kW", quantity: 4000, unitPrice: 380 }
+          ]
+        },
+        {
+          id: "piping",
+          name: "Piping Systems",
+          color: "#6bcb77",
+          items: [
+            { id: 1, description: "Process piping (carbon steel)", unit: "m", quantity: 45000, unitPrice: 285 },
+            { id: 2, description: "Process piping (stainless)", unit: "m", quantity: 18000, unitPrice: 520 },
+            { id: 3, description: "Process piping (alloy)", unit: "m", quantity: 6500, unitPrice: 890 },
+            { id: 4, description: "Utility piping", unit: "m", quantity: 28000, unitPrice: 165 },
+            { id: 5, description: "HDPE piping", unit: "m", quantity: 12000, unitPrice: 85 },
+            { id: 6, description: "Valves (ball, gate, globe)", unit: "ea", quantity: 1850, unitPrice: 1850 },
+            { id: 7, description: "Control valves", unit: "ea", quantity: 145, unitPrice: 28500 },
+            { id: 8, description: "Safety relief valves", unit: "ea", quantity: 85, unitPrice: 12500 },
+            { id: 9, description: "Pipe supports & hangers", unit: "t", quantity: 280, unitPrice: 4500 },
+            { id: 10, description: "Expansion joints", unit: "ea", quantity: 48, unitPrice: 8500 }
+          ]
+        },
+        {
+          id: "structural",
+          name: "Structural Steel",
+          color: "#9b59b6",
+          items: [
+            { id: 1, description: "Main steel structure", unit: "t", quantity: 4500, unitPrice: 4200 },
+            { id: 2, description: "Secondary steel", unit: "t", quantity: 1200, unitPrice: 3800 },
+            { id: 3, description: "Pipe racks", unit: "t", quantity: 850, unitPrice: 4500 },
+            { id: 4, description: "Equipment supports", unit: "t", quantity: 420, unitPrice: 5200 },
+            { id: 5, description: "Access platforms", unit: "t", quantity: 380, unitPrice: 5800 },
+            { id: 6, description: "Stairs & ladders", unit: "t", quantity: 95, unitPrice: 6500 },
+            { id: 7, description: "Handrails & gratings", unit: "m²", quantity: 8500, unitPrice: 285 },
+            { id: 8, description: "Fireproofing (intumescent)", unit: "m²", quantity: 12500, unitPrice: 165 }
+          ]
+        },
+        {
+          id: "instrumentation",
+          name: "Instrumentation",
+          color: "#3498db",
+          items: [
+            { id: 1, description: "DCS system", unit: "I/O", quantity: 8500, unitPrice: 185 },
+            { id: 2, description: "SIS system", unit: "I/O", quantity: 1200, unitPrice: 245 },
+            { id: 3, description: "Field instruments (flow)", unit: "ea", quantity: 285, unitPrice: 8500 },
+            { id: 4, description: "Field instruments (pressure)", unit: "ea", quantity: 520, unitPrice: 2800 },
+            { id: 5, description: "Field instruments (temperature)", unit: "ea", quantity: 680, unitPrice: 1650 },
+            { id: 6, description: "Field instruments (level)", unit: "ea", quantity: 185, unitPrice: 6500 },
+            { id: 7, description: "Analyzers", unit: "ea", quantity: 45, unitPrice: 45000 },
+            { id: 8, description: "Control panels", unit: "ea", quantity: 65, unitPrice: 18500 },
+            { id: 9, description: "Field junction boxes", unit: "ea", quantity: 180, unitPrice: 4500 },
+            { id: 10, description: "Marshalling cabinets", unit: "ea", quantity: 35, unitPrice: 28000 }
+          ]
+        },
+        {
+          id: "hvac",
+          name: "HVAC Systems",
+          color: "#e67e22",
+          items: [
+            { id: 1, description: "Air handling units", unit: "ea", quantity: 18, unitPrice: 145000 },
+            { id: 2, description: "Chillers", unit: "kW", quantity: 4500, unitPrice: 285 },
+            { id: 3, description: "Cooling coils", unit: "ea", quantity: 45, unitPrice: 18500 },
+            { id: 4, description: "Heating coils", unit: "ea", quantity: 38, unitPrice: 12500 },
+            { id: 5, description: "Ductwork (galvanized)", unit: "m²", quantity: 8500, unitPrice: 145 },
+            { id: 6, description: "Insulation (ductwork)", unit: "m²", quantity: 6500, unitPrice: 85 },
+            { id: 7, description: "VAV boxes", unit: "ea", quantity: 85, unitPrice: 4500 },
+            { id: 8, description: "Exhaust fans", unit: "ea", quantity: 42, unitPrice: 8500 },
+            { id: 9, description: "Fume extraction systems", unit: "ea", quantity: 8, unitPrice: 125000 }
+          ]
+        },
+        {
+          id: "fire",
+          name: "Fire Protection",
+          color: "#e74c3c",
+          items: [
+            { id: 1, description: "Fire water pumps", unit: "ea", quantity: 6, unitPrice: 185000 },
+            { id: 2, description: "Fire water storage", unit: "m³", quantity: 3500, unitPrice: 650 },
+            { id: 3, description: "Fire main piping", unit: "m", quantity: 8500, unitPrice: 245 },
+            { id: 4, description: "Sprinkler systems", unit: "head", quantity: 4500, unitPrice: 185 },
+            { id: 5, description: "Deluge systems", unit: "zone", quantity: 28, unitPrice: 85000 },
+            { id: 6, description: "Fire hydrants", unit: "ea", quantity: 45, unitPrice: 12500 },
+            { id: 7, description: "Fire alarm panels", unit: "ea", quantity: 12, unitPrice: 45000 },
+            { id: 8, description: "Smoke/heat detectors", unit: "ea", quantity: 850, unitPrice: 650 },
+            { id: 9, description: "Fire suppression (gas)", unit: "zone", quantity: 15, unitPrice: 145000 },
+            { id: 10, description: "Foam systems", unit: "ea", quantity: 8, unitPrice: 185000 }
+          ]
+        }
+      ]
+    };
+
+    let projectData = null;
+    let openDisciplines = new Set();
+
+    // Load from localStorage or use defaults
+    function initializeData() {
+      const saved = localStorage.getItem('costEstimatorData');
+      if (saved) {
+        try {
+          projectData = JSON.parse(saved);
+        } catch (e) {
+          projectData = JSON.parse(JSON.stringify(defaultData));
+        }
+      } else {
+        projectData = JSON.parse(JSON.stringify(defaultData));
+      }
+      openDisciplines = new Set([projectData.disciplines[0].id]);
+    }
+
+    // =====================
+    // UTILITY FUNCTIONS
+    // =====================
+    function formatCurrency(value) {
+      if (value >= 1000000000) return (value / 1000000000).toFixed(2) + 'B';
+      if (value >= 1000000) return (value / 1000000).toFixed(2) + 'M';
+      if (value >= 1000) return (value / 1000).toFixed(1) + 'K';
+      return value.toLocaleString('de-DE');
+    }
+
+    function formatNumber(value) {
+      return value.toLocaleString('de-DE');
+    }
+
+    function parseFormattedNumber(str) {
+      return parseFloat(str.replace(/[^\d.-]/g, '')) || 0;
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    // =====================
+    // RENDER FUNCTIONS
+    // =====================
+    function renderDisciplineSection(discipline, index) {
+      const subtotal = discipline.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+      const isOpen = openDisciplines.has(discipline.id);
+      
+      return `
+        <div class="discipline-section mb-3" data-discipline="${discipline.id}" style="animation-delay: ${index * 0.05}s">
+          <div class="discipline-header" onclick="toggleDiscipline('${discipline.id}')">
+            <div class="left">
+              <span class="discipline-dot" style="background: ${discipline.color}"></span>
+              <span class="discipline-title">${discipline.name}</span>
+              <span class="text-xs text-[var(--text-muted)]">(${discipline.items.length})</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="discipline-subtotal">${formatCurrency(subtotal)}</span>
+              <svg class="collapse-arrow ${isOpen ? 'open' : ''}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
+          </div>
+          <div class="discipline-content ${isOpen ? 'open' : ''}">
+            <div class="overflow-x-auto" style="max-height: 400px; overflow-y: auto;">
+              <table class="cost-table">
+                <thead>
+                  <tr>
+                    <th style="width: 30px;">#</th>
+                    <th>Description</th>
+                    <th style="width: 60px;">Unit</th>
+                    <th style="width: 90px;">Qty</th>
+                    <th style="width: 100px;">Price</th>
+                    <th style="width: 100px;">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${discipline.items.map((item, idx) => `
+                    <tr data-discipline="${discipline.id}" data-item="${item.id}">
+                      <td class="text-[var(--text-muted)] text-xs">${idx + 1}</td>
+                      <td>
+                        <input type="text" class="editable-input description-input text-xs" 
+                          value="${item.description}" 
+                          data-field="description"
+                          aria-label="Item description">
+                      </td>
+                      <td>
+                        <input type="text" class="editable-input text-xs" 
+                          value="${item.unit}" 
+                          data-field="unit"
+                          aria-label="Unit">
+                      </td>
+                      <td>
+                        <input type="text" class="editable-input number quantity-input text-xs" 
+                          value="${formatNumber(item.quantity)}" 
+                          data-field="quantity"
+                          aria-label="Quantity">
+                      </td>
+                      <td>
+                        <input type="text" class="editable-input number unit-price-input text-xs" 
+                          value="${formatNumber(item.unitPrice)}" 
+                          data-field="unitPrice"
+                          aria-label="Unit price">
+                      </td>
+                      <td class="mono text-right text-xs font-medium item-total">
+                        ${formatCurrency(item.quantity * item.unitPrice)}
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+            <div class="flex justify-end p-3 bg-[var(--bg-elevated)] border-t border-[var(--border)]">
+              <button class="btn-secondary text-xs py-2 px-3" onclick="addItem('${discipline.id}')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Item
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderProgressBars() {
+      const total = calculateTotal();
+      const container = document.getElementById('progressBars');
+      
+      container.innerHTML = projectData.disciplines.map(discipline => {
+        const subtotal = discipline.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+        const percentage = total > 0 ? (subtotal / total * 100) : 0;
+        
+        return `
+          <div class="bg-[var(--bg-card)] border border-[var(--border)] rounded-lg p-3">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <span class="discipline-dot" style="background: ${discipline.color}"></span>
+                <span class="text-xs font-medium truncate">${discipline.name}</span>
+              </div>
+              <span class="mono text-xs">${percentage.toFixed(0)}%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: ${percentage}%; background: ${discipline.color}"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderAll() {
+      const container = document.getElementById('disciplinesContainer');
+      container.innerHTML = projectData.disciplines.map((discipline, index) => 
+        renderDisciplineSection(discipline, index)
+      ).join('');
+      
+      setTimeout(() => {
+        document.querySelectorAll('.discipline-section').forEach(el => {
+          el.classList.add('visible');
+        });
+      }, 50);
+      
+      updateSummary();
+      renderProgressBars();
+      attachInputListeners();
+      saveToLocalStorage();
+    }
+
+    function updateSummary() {
+      const total = calculateTotal();
+      const contingency = total * 0.15;
+      const grandTotal = total + contingency;
+      
+      document.getElementById('totalEstimate').textContent = formatCurrency(total) + ' EUR';
+      document.getElementById('contingency').textContent = formatCurrency(contingency);
+      document.getElementById('grandTotal').textContent = formatCurrency(grandTotal);
+      
+      const rangeEl = document.getElementById('targetRange');
+      if (total >= 50000000 && total <= 500000000) {
+        rangeEl.textContent = 'In Range';
+        rangeEl.style.color = 'var(--accent)';
+      } else if (total < 50000000) {
+        rangeEl.textContent = '< 50M';
+        rangeEl.style.color = 'var(--warning)';
+      } else {
+        rangeEl.textContent = '> 500M';
+        rangeEl.style.color = 'var(--danger)';
+      }
+    }
+
+    function calculateTotal() {
+      return projectData.disciplines.reduce((total, discipline) => {
+        return total + discipline.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+      }, 0);
+    }
+
+    function updateDisciplineSubtotal(disciplineId) {
+      const discipline = projectData.disciplines.find(d => d.id === disciplineId);
+      if (!discipline) return;
+      
+      const subtotal = discipline.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+      const section = document.querySelector(`[data-discipline="${disciplineId}"]`);
+      if (section) {
+        const subtotalEl = section.querySelector('.discipline-subtotal');
+        if (subtotalEl) subtotalEl.textContent = formatCurrency(subtotal);
+        
+        discipline.items.forEach(item => {
+          const row = section.querySelector(`tr[data-item="${item.id}"]`);
+          if (row) {
+            const totalCell = row.querySelector('.item-total');
+            if (totalCell) totalCell.textContent = formatCurrency(item.quantity * item.unitPrice);
+          }
+        });
+      }
+    }
+
+    // =====================
+    // EVENT HANDLERS
+    // =====================
+    function attachInputListeners() {
+      document.querySelectorAll('.cost-table input').forEach(input => {
+        input.addEventListener('change', handleInputChange);
+        input.addEventListener('focus', (e) => e.target.select());
+      });
+    }
+
+    function handleInputChange(e) {
+      const input = e.target;
+      const row = input.closest('tr');
+      const section = input.closest('.discipline-section');
+      const disciplineId = section.dataset.discipline;
+      const itemId = parseInt(row.dataset.item);
+      const field = input.dataset.field;
+      
+      const discipline = projectData.disciplines.find(d => d.id === disciplineId);
+      const item = discipline.items.find(i => i.id === itemId);
+      
+      if (field === 'quantity' || field === 'unitPrice') {
+        const value = parseFormattedNumber(input.value);
+        item[field] = value;
+        input.value = formatNumber(value);
+      } else {
+        item[field] = input.value;
+      }
+      
+      updateDisciplineSubtotal(disciplineId);
+      updateSummary();
+      renderProgressBars();
+      saveToLocalStorage();
+    }
+
+    function toggleDiscipline(disciplineId) {
+      const section = document.querySelector(`[data-discipline="${disciplineId}"]`);
+      const content = section.querySelector('.discipline-content');
+      const arrow = section.querySelector('.collapse-arrow');
+      
+      if (openDisciplines.has(disciplineId)) {
+        openDisciplines.delete(disciplineId);
+        content.classList.remove('open');
+        arrow.classList.remove('open');
+      } else {
+        openDisciplines.add(disciplineId);
+        content.classList.add('open');
+        arrow.classList.add('open');
+      }
+    }
+
+    function addItem(disciplineId) {
+      const discipline = projectData.disciplines.find(d => d.id === disciplineId);
+      const newId = Math.max(...discipline.items.map(i => i.id)) + 1;
+      
+      discipline.items.push({
+        id: newId,
+        description: "New item",
+        unit: "ea",
+        quantity: 0,
+        unitPrice: 0
+      });
+      
+      if (!openDisciplines.has(disciplineId)) openDisciplines.add(disciplineId);
+      renderAll();
+      showToast('Item added');
+    }
+
+    // =====================
+    // STORAGE & FILE OPS
+    // =====================
+    function saveToLocalStorage() {
+      localStorage.setItem('costEstimatorData', JSON.stringify(projectData));
+    }
+
+    function saveData() {
+      hideMenu();
+      const dataStr = JSON.stringify(projectData, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `estimate_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Data saved');
+    }
+
+    function loadData(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          projectData = data;
+          openDisciplines = new Set();
+          renderAll();
+          hideMenu();
+          showToast('Data loaded');
+        } catch (err) {
+          showToast('Error loading file');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function resetData() {
+      if (confirm('Reset all data to defaults?')) {
+        projectData = JSON.parse(JSON.stringify(defaultData));
+        openDisciplines = new Set([projectData.disciplines[0].id]);
+        renderAll();
+        hideMenu();
+        showToast('Data reset');
+      }
+    }
+
+    function exportReport() {
+      hideMenu();
+      const total = calculateTotal();
+      const contingency = total * 0.15;
+      const grandTotal = total + contingency;
+      
+      let reportHTML = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Cost Estimate Report</title>
+<style>body{font-family:Arial,sans-serif;padding:20px;max-width:900px;margin:0 auto}h1{border-bottom:2px solid #333;padding-bottom:10px}table{width:100%;border-collapse:collapse;margin:15px 0}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#333;color:white}.right{text-align:right}.subtotal{font-weight:bold;background:#f0f0f0}</style></head>
+<body><h1>Cost Estimate Report</h1>
+<p><strong>Total:</strong> ${formatCurrency(total)} EUR | <strong>Contingency (15%):</strong> ${formatCurrency(contingency)} EUR | <strong>Grand Total:</strong> ${formatCurrency(grandTotal)} EUR</p>
+<p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>`;
+      
+      projectData.disciplines.forEach(discipline => {
+        const subtotal = discipline.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+        reportHTML += `<h2 style="color:${discipline.color}">${discipline.name}</h2><table><thead><tr><th>#</th><th>Description</th><th>Unit</th><th class="right">Qty</th><th class="right">Price</th><th class="right">Total</th></tr></thead><tbody>`;
+        discipline.items.forEach((item, idx) => {
+          reportHTML += `<tr><td>${idx+1}</td><td>${item.description}</td><td>${item.unit}</td><td class="right">${formatNumber(item.quantity)}</td><td class="right">${formatNumber(item.unitPrice)}</td><td class="right">${formatNumber(item.quantity*item.unitPrice)}</td></tr>`;
+        });
+        reportHTML += `<tr class="subtotal"><td colspan="5">Subtotal</td><td class="right">${formatNumber(subtotal)}</td></tr></tbody></table>`;
+      });
+      
+      reportHTML += `<p style="font-size:12px;color:#666;margin-top:30px">Class 4 Estimate (AACE) - Expected accuracy: -20% to +30%</p></body></html>`;
+      
+      const blob = new Blob([reportHTML], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `report_${new Date().toISOString().split('T')[0]}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Report exported');
+    }
+
+    // =====================
+    // MODAL & MENU
+    // =====================
+    function showMenu() {
+      document.getElementById('menuModal').classList.add('active');
+    }
+
+    function hideMenu() {
+      document.getElementById('menuModal').classList.remove('active');
+    }
+
+    // =====================
+    // SERVICE WORKER REGISTRATION
+    // =====================
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+      });
+    }
+
+    // =====================
+    // INITIALIZATION
+    // =====================
+    document.addEventListener('DOMContentLoaded', () => {
+      initializeData();
+      renderAll();
+      
+      document.getElementById('fileInput').addEventListener('change', (e) => {
+        if (e.target.files[0]) loadData(e.target.files[0]);
+      });
+      
+      document.getElementById('menuModal').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) hideMenu();
+      });
+    });
+  </script>
+</body>
+
+</html>
+
